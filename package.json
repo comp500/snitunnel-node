@@ -1,7 +1,7 @@
 {
-  "name": "tlstunnel-client",
-  "version": "1.0.1",
-  "description": "A TLS tunneling client (like stunnel) written in node.js",
+  "name": "snitunnel-client",
+  "version": "1.0.0",
+  "description": "A thing",
   "main": "index.js",
   "scripts": {
     "test": "node index.js",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/comp500/tlstunnel-node.git"
+    "url": "git+https://github.com/comp500/snitunnel-node.git"
   },
   "keywords": [
     "tls",
@@ -19,9 +19,9 @@
   "author": "comp500",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/comp500/tlstunnel-node/issues"
+    "url": "https://github.com/comp500/snitunnel-node/issues"
   },
-  "homepage": "https://github.com/comp500/tlstunnel-node#readme",
+  "homepage": "https://github.com/comp500/snitunnel-node#readme",
   "eslintConfig": {
     "env": {
       "node": true
@@ -29,8 +29,5 @@
     "parserOptions": {
       "ecmaVersion": 6
     }
-  },
-  "dependencies": {
-    "node-pcap-writer": "^1.0.0"
   }
 }
