@@ -29,5 +29,8 @@
     "parserOptions": {
       "ecmaVersion": 6
     }
+  },
+  "dependencies": {
+    "node-pcap-writer": "^1.0.0"
   }
 }

@@ -18,15 +18,15 @@ const server = net.createServer((tcpSocket) => {
 	tcpSocket.once("data", function (data) {
 		// var pcapWriter = new PcapWriter('./test.pcap', 1500, 105);
 		console.log(data.toString("hex"));
-		var index = data.indexOf("reddit.com");
+		var index = data.indexOf("google.com");
 		console.log(index);
 		if (index > 0) {
-			data.write("google.com", index);
+			data.write("reddit.com", index);
 		}
 		// pcapWriter.writePacket(data, new Date());
 		// pcapWriter.close();
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
-		destSocket.connect(443, "127.0.0.1", function () {
+		destSocket.connect(443, "151.101.193.140", function () {
 			destSocket.write(data);
 			tcpSocket.pipe(destSocket);
 			destSocket.pipe(tcpSocket);
@@ -115,6 +115,6 @@ server.on("error", (err) => {
 	console.dir(err);
 });
 
-server.listen(config.tcpPort, () => {
+server.listen(443, () => {
 	console.log("TCP server started, awaiting connections");
 });
