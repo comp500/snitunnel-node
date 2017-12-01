@@ -12,22 +12,55 @@ const options = {
 	rejectUnauthorized: config.strictChecking || false
 };
 
+var removeSuffix = function(buffer) {
+	var offset = 44;
+	offset += buffer[offset]; // session ID length
+	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
+	offset += buffer[offset] + 1; // compression methods length
+	
+	var extsLength = buffer.readUIntBE(offset, 2);
+	offset += 2;
+	var originalOffset = offset;
+	
+	while (offset < (originalOffset + extsLength)) {
+		var extType = buffer.readUIntBE(offset, 2);
+		offset += 2;
+		var extLength = buffer.readUIntBE(offset, 2);
+		offset += 2;
+		if (extType == 0) {
+			var suffix = ".google.com";
+			var serverNameLength = buffer.readUIntBE(offset + 3, 2);
+			var origString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength);
+			var newString = origString.replace(suffix, "");
+			buffer.writeUIntBE(newString.length, offset + 3, 2);
+			var preSlice = buffer.slice(0, offset + 5);
+			var postSlice = buffer.slice(offset + 5 + serverNameLength, buffer.length);
+			return {
+				host: newString,
+				buffer: Buffer.concat([preSlice, Buffer.from(newString), postSlice])
+			};
+			break;
+		}
+		offset += extLength;
+	}
+	return null;
+};
+
 var socketIdCounter = 0;
 
 const server = net.createServer((tcpSocket) => {
 	tcpSocket.once("data", function (data) {
 		// var pcapWriter = new PcapWriter('./test.pcap', 1500, 105);
-		console.log(data.toString("hex"));
-		var index = data.indexOf("google.com");
-		console.log(index);
-		if (index > 0) {
-			data.write("reddit.com", index);
+		var normal = removeSuffix(data);
+		if (normal == null) {
+			throw new Error("no SNI");
 		}
+		console.log(normal.host);
 		// pcapWriter.writePacket(data, new Date());
 		// pcapWriter.close();
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
-		destSocket.connect(443, "151.101.193.140", function () {
-			destSocket.write(data);
+		destSocket.connect(443, "159.203.57.164", function () {
+			destSocket.write(normal.buffer);
 			tcpSocket.pipe(destSocket);
 			destSocket.pipe(tcpSocket);
 		});

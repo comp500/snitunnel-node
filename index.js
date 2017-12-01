@@ -14,20 +14,53 @@ const options = {
 
 var socketIdCounter = 0;
 
+const appendSuffix = function(buffer) {
+	var offset = 44;
+	offset += buffer[offset]; // session ID length
+	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
+	offset += buffer[offset] + 1; // compression methods length
+	
+	var extsLength = buffer.readUIntBE(offset, 2);
+	offset += 2;
+	var originalOffset = offset;
+	
+	while (offset < (originalOffset + extsLength)) {
+		var extType = buffer.readUIntBE(offset, 2);
+		offset += 2;
+		var extLength = buffer.readUIntBE(offset, 2);
+		offset += 2;
+		if (extType == 0) {
+			var suffix = ".google.com";
+			var serverNameLength = buffer.readUIntBE(offset + 3, 2);
+			var origString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength);
+			var newString = origString + suffix;
+			buffer.writeUIntBE(newString.length, offset + 3, 2);
+			var preSlice = buffer.slice(0, offset + 5);
+			var postSlice = buffer.slice(offset + 5 + serverNameLength, buffer.length);
+			return {
+				host: origString,
+				buffer: Buffer.concat([preSlice, Buffer.from(newString), postSlice])
+			};
+			break;
+		}
+		offset += extLength;
+	}
+	return null;
+};
+
 const server = net.createServer((tcpSocket) => {
 	tcpSocket.once("data", function (data) {
 		// var pcapWriter = new PcapWriter('./test.pcap', 1500, 105);
-		console.log(data.toString("hex"));
-		var index = data.indexOf("reddit.com");
-		console.log(index);
-		if (index > 0) {
-			data.write("google.com", index);
+		var suffixed = appendSuffix(data);
+		if (suffixed == null) {
+			throw new Error("no SNI");
 		}
+		console.log(suffixed.host);
 		// pcapWriter.writePacket(data, new Date());
 		// pcapWriter.close();
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "127.0.0.1", function () {
-			destSocket.write(data);
+			destSocket.write(suffixed.buffer);
 			tcpSocket.pipe(destSocket);
 			destSocket.pipe(tcpSocket);
 		});
