@@ -13,8 +13,8 @@ const options = {
 };
 
 var removeSuffix = function(buffer) {
-	var offset = 44;
-	offset += buffer[offset]; // session ID length
+	var offset = 43;
+	offset += buffer[offset] + 1; // session ID length
 	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
 	offset += buffer[offset] + 1; // compression methods length
 	
@@ -49,6 +49,7 @@ var removeSuffix = function(buffer) {
 var socketIdCounter = 0;
 
 const server = net.createServer((tcpSocket) => {
+	var socketId = socketIdCounter++;
 	tcpSocket.once("data", function (data) {
 		// var pcapWriter = new PcapWriter('./test.pcap', 1500, 105);
 		var normal = removeSuffix(data);
@@ -63,6 +64,20 @@ const server = net.createServer((tcpSocket) => {
 			destSocket.write(normal.buffer);
 			tcpSocket.pipe(destSocket);
 			destSocket.pipe(tcpSocket);
+		});
+
+		destSocket.on("error", (err) => {
+			console.log("Socket error, id", socketId);
+			console.dir(err);
+			// Clean up
+			tcpSocket.end();
+		});
+
+		tcpSocket.on("error", (err) => {
+			console.log("Socket error, id", socketId);
+			console.dir(err);
+			// Clean up
+			destSocket.end();
 		});
 	});
 
