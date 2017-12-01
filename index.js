@@ -2,15 +2,8 @@
 
 const tls = require("tls");
 const net = require("net");
-const PcapWriter = require("node-pcap-writer");
 
 const config = require("./config.json");
-const options = {
-	host: config.host,
-	servername: config.servername,
-	port: config.tlsPort,
-	rejectUnauthorized: config.strictChecking || false
-};
 
 var socketIdCounter = 0;
 
@@ -49,22 +42,26 @@ const appendSuffix = function(buffer) {
 };
 
 const server = net.createServer((tcpSocket) => {
+	// Save socketId then increment counter
 	var socketId = socketIdCounter++;
 
+	console.log("[" + socketId + "]", "Connection received from " + tcpSocket.remoteAddress);
+
 	tcpSocket.once("data", function (data) {
-		// var pcapWriter = new PcapWriter('./test.pcap', 1500, 105);
 		var suffixed = appendSuffix(data);
 		if (suffixed == null) {
+			console.log("[" + socketId + "]", "Error in received ClientHello packet: no SNI server_name found");
+			console.log("[" + socketId + "]", "Printing hex dump:");
 			console.log(data.toString("hex"));
-			throw new Error("no SNI");
+			tcpSocket.end();
+			return;
 		}
-		console.log(suffixed.host);
-		// pcapWriter.writePacket(data, new Date());
-		// pcapWriter.close();
+
+		console.log("[" + socketId + "]", "TLS ClientHello received, connecting you to server at " + suffixed.host);
+
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "127.0.0.1", function () {
 			destSocket.write(suffixed.buffer);
-			console.log(suffixed.buffer.toString("hex"));
 			tcpSocket.pipe(destSocket);
 			destSocket.pipe(tcpSocket);
 		});
@@ -83,83 +80,6 @@ const server = net.createServer((tcpSocket) => {
 			destSocket.end();
 		});
 	});
-
-	/*// Save socketId then increment counter
-	var socketId = socketIdCounter++;
-
-	console.log("[" + socketId + "]", "Connection received from " + tcpSocket.remoteAddress);
-
-	var tlsSocket = tls.connect(options, () => {
-		console.log("[" + socketId + "]", "Connected to TLS server at", tlsSocket.remoteAddress, tlsSocket.authorized ? "authorized" : "unauthorized");
-
-		var cert = tlsSocket.getPeerCertificate();
-
-		if (config.fingerprintList && config.fingerprintList.length > 0) {
-			if (config.fingerprintList.indexOf(cert.fingerprint.toUpperCase()) == -1) {
-				if (tlsSocket.authorized) {
-					console.log("[" + socketId + "]", "Certificate not in fingerprint list");
-				} else {
-					console.log("[" + socketId + "]", "Authorization error:", tlsSocket.authorizationError);
-				}
-
-				console.log("[" + socketId + "]", "Certificate details:", JSON.stringify(cert.subject));
-				console.log("[" + socketId + "]", "Certificate fingerprint:", cert.fingerprint);
-				console.log("[" + socketId + "]", "If you trust the above certificate, copy it to the fingerprint list in config.json");
-
-				tlsSocket.end();
-				tcpSocket.end();
-			} else {
-				console.log("[" + socketId + "]", "Fingerprint verified:", cert.fingerprint);
-
-				// Sync file descriptors, for some reason
-				tlsSocket.fd = tcpSocket.fd;
-				// Pipe TCP -> TLS
-				tcpSocket.pipe(tlsSocket);
-				// Pipe TLS -> TCP
-				tlsSocket.pipe(tcpSocket);
-			}
-		} else {
-			if (tlsSocket.authorized) {
-				console.log("[" + socketId + "]", "Certificate not in fingerprint list, forwarding anyway as list is empty");
-				console.log("[" + socketId + "]", "Certificate details:", JSON.stringify(cert.subject));
-				console.log("[" + socketId + "]", "Certificate fingerprint:", cert.fingerprint);
-				console.log("[" + socketId + "]", "If you trust the above certificate, copy it to the fingerprint list in config.json to ensure future security");
-
-				// Sync file descriptors, for some reason
-				tlsSocket.fd = tcpSocket.fd;
-				// Pipe TCP -> TLS
-				tcpSocket.pipe(tlsSocket);
-				// Pipe TLS -> TCP
-				tlsSocket.pipe(tcpSocket);
-			} else {
-				console.log("[" + socketId + "]", "Authorization error:", tlsSocket.authorizationError);
-				console.log("[" + socketId + "]", "Certificate details:", JSON.stringify(cert.subject));
-				console.log("[" + socketId + "]", "Certificate fingerprint:", cert.fingerprint);
-				console.log("[" + socketId + "]", "If you trust the above certificate, copy it to the fingerprint list in config.json");
-
-				tlsSocket.end();
-				tcpSocket.end();
-			}
-		}
-	});
-
-	tlsSocket.on("error", (err) => {
-		console.log("Socket error, id", socketId);
-		console.dir(err);
-		// Clean up
-		tcpSocket.end();
-	});
-
-	tcpSocket.on("error", (err) => {
-		console.log("Socket error, id", socketId);
-		console.dir(err);
-		// Clean up
-		tlsSocket.end();
-	});
-	
-	tcpSocket.on("end", () => {
-		console.log("[" + socketId + "]", "Socket disconnected");
-	});*/
 });
 
 server.on("error", (err) => {
