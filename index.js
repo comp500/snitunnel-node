@@ -19,6 +19,7 @@ const appendSuffix = function(buffer) {
 	buffer.writeUIntBE(originalHelloLength + suffix.length, offset, 3);
 
 	// get to 43
+	offset += 37;
 	offset += buffer[offset] + 1; // session ID length
 	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
 	offset += buffer[offset] + 1; // compression methods length
@@ -79,6 +80,7 @@ const server = net.createServer((tcpSocket) => {
 		console.log("[" + socketId + "]", "TLS ClientHello received, connecting you to server at " + suffixed.host + " through snitunnel server");
 
 		console.log(data.toString("hex"));
+		console.log(suffixed.buffer.toString("hex"));
 
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "127.0.0.1", function () {
