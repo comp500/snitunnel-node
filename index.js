@@ -57,7 +57,7 @@ const server = net.createServer((tcpSocket) => {
 			return;
 		}
 
-		console.log("[" + socketId + "]", "TLS ClientHello received, connecting you to server at " + suffixed.host);
+		console.log("[" + socketId + "]", "TLS ClientHello received, connecting you to server at " + suffixed.host + " through snitunnel server");
 
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "127.0.0.1", function () {

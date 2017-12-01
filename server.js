@@ -57,7 +57,7 @@ const server = net.createServer((tcpSocket) => {
 			return;
 		}
 
-		console.log("[" + socketId + "]", "TLS ClientHello received, connecting client to server at " + suffixed.host);
+		console.log("[" + socketId + "]", "TLS ClientHello received, connecting client to server at " + normal.host);
 
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "159.203.57.164", function () {
