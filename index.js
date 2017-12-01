@@ -8,12 +8,24 @@ const config = require("./config.json");
 var socketIdCounter = 0;
 
 const appendSuffix = function(buffer) {
-	var offset = 43;
+	var suffix = ".google.com";
+	var offset = 3;
+	// increase length
+	var originalTotalLength = buffer.readUIntBE(offset, 2);
+	buffer.writeUIntBE(originalTotalLength + suffix.length, offset, 2);
+	// get to hello length
+	offset += 3;
+	var originalHelloLength = buffer.readUIntBE(offset, 3);
+	buffer.writeUIntBE(originalHelloLength + suffix.length, offset, 3);
+
+	// get to 43
 	offset += buffer[offset] + 1; // session ID length
 	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
 	offset += buffer[offset] + 1; // compression methods length
 	
 	var extsLength = buffer.readUIntBE(offset, 2);
+	// increase length
+	buffer.writeUIntBE(extsLength + suffix.length, offset, 2);
 	offset += 2;
 	var originalOffset = offset;
 	
@@ -21,9 +33,16 @@ const appendSuffix = function(buffer) {
 		var extType = buffer.readUIntBE(offset, 2);
 		offset += 2;
 		var extLength = buffer.readUIntBE(offset, 2);
+		if (extType == 0) {
+			// increase length
+			buffer.writeUIntBE(extLength + suffix.length, offset, 2);
+		}
 		offset += 2;
 		if (extType == 0) {
-			var suffix = ".google.com";
+			// increase length
+			var serverNameListLength = buffer.readUIntBE(offset, 2);
+			buffer.writeUIntBE(serverNameListLength + suffix.length, offset, 2);
+			// get SNI length
 			var serverNameLength = buffer.readUIntBE(offset + 3, 2);
 			var origString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength);
 			var newString = origString + suffix;
@@ -58,6 +77,8 @@ const server = net.createServer((tcpSocket) => {
 		}
 
 		console.log("[" + socketId + "]", "TLS ClientHello received, connecting you to server at " + suffixed.host + " through snitunnel server");
+
+		console.log(data.toString("hex"));
 
 		var destSocket = new net.Socket({fd: tcpSocket.fd});
 		destSocket.connect(443, "127.0.0.1", function () {
