@@ -51,11 +51,15 @@ var appendSuffix = function(buffer) {
 		if (extType == 0) {
 			var suffix = ".google.com";
 			var serverNameLength = buffer.readUIntBE(offset + 3, 2);
-			var newString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength) + suffix;
+			var origString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength);
+			var newString = origString + suffix;
 			buffer.writeUIntBE(newString.length, offset + 3, 2);
 			var preSlice = buffer.slice(0, offset + 5);
 			var postSlice = buffer.slice(offset + 5 + serverNameLength, buffer.length);
-			return Buffer.concat([preSlice, Buffer.from(newString), postSlice]);
+			return {
+				host: origString,
+				buffer: Buffer.concat([preSlice, Buffer.from(newString), postSlice])
+			};
 			break;
 		}
 		offset += extLength;
@@ -86,7 +90,10 @@ var removeSuffix = function(buffer) {
 			buffer.writeUIntBE(newString.length, offset + 3, 2);
 			var preSlice = buffer.slice(0, offset + 5);
 			var postSlice = buffer.slice(offset + 5 + serverNameLength, buffer.length);
-			return Buffer.concat([preSlice, Buffer.from(newString), postSlice]);
+			return {
+				host: newString,
+				buffer: Buffer.concat([preSlice, Buffer.from(newString), postSlice])
+			};
 			break;
 		}
 		offset += extLength;
@@ -102,7 +109,7 @@ if (suffixed == null) {
 	console.log(suffixed);
 }
 
-const normal = removeSuffix(suffixed);
+const normal = removeSuffix(suffixed.buffer);
 
 if (normal == null) {
 	throw new Error("no SNI");
@@ -111,5 +118,5 @@ if (normal == null) {
 }
 
 console.log(testBuffer.length);
-console.log(suffixed.length);
-console.log(normal.length);
+console.log(suffixed.buffer.length);
+console.log(normal.buffer.length);
