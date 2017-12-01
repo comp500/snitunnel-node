@@ -6,12 +6,25 @@ const net = require("net");
 const config = require("./config.json");
 
 var removeSuffix = function(buffer) {
-	var offset = 43;
+	var suffix = ".google.com";
+	var offset = 3;
+	// decrease length
+	var originalTotalLength = buffer.readUIntBE(offset, 2);
+	buffer.writeUIntBE(originalTotalLength - suffix.length, offset, 2);
+	// get to hello length
+	offset += 3;
+	var originalHelloLength = buffer.readUIntBE(offset, 3);
+	buffer.writeUIntBE(originalHelloLength - suffix.length, offset, 3);
+
+	// get to 43
+	offset += 37;
 	offset += buffer[offset] + 1; // session ID length
 	offset += buffer.readUIntBE(offset, 2) + 2; // cipher suites length
 	offset += buffer[offset] + 1; // compression methods length
 	
 	var extsLength = buffer.readUIntBE(offset, 2);
+	// decrease length
+	buffer.writeUIntBE(extsLength - suffix.length, offset, 2);
 	offset += 2;
 	var originalOffset = offset;
 	
@@ -19,9 +32,16 @@ var removeSuffix = function(buffer) {
 		var extType = buffer.readUIntBE(offset, 2);
 		offset += 2;
 		var extLength = buffer.readUIntBE(offset, 2);
+		if (extType == 0) {
+			// decrease length
+			buffer.writeUIntBE(extLength - suffix.length, offset, 2);
+		}
 		offset += 2;
 		if (extType == 0) {
-			var suffix = ".google.com";
+			// decrease length
+			var serverNameListLength = buffer.readUIntBE(offset, 2);
+			buffer.writeUIntBE(serverNameListLength - suffix.length, offset, 2);
+			// get SNI length
 			var serverNameLength = buffer.readUIntBE(offset + 3, 2);
 			var origString = buffer.toString("utf8", offset + 5, offset + 5 + serverNameLength);
 			var newString = origString.replace(suffix, "");
